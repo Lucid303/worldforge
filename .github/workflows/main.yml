@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -34,3 +37,17 @@ jobs:
         with:
           name: worldforge-jar
           path: build/libs/*.jar
+
+      - name: Publish the jar on the GitHub Releases page (only when the push is a tag like v0.7.1)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd build/libs
+          sha256sum *.jar > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              --title "World Forge $GITHUB_REF_NAME" \
+              --notes "Download the .jar file below and put it in your mods folder (NeoForge 1.21.1). SHA256SUMS.txt lets you check the file was not changed."
+          gh release upload "$GITHUB_REF_NAME" *.jar SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber
