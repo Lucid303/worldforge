@@ -1,4 +1,4 @@
-# World Forge (version 0.7.0)
+# World Forge (version 0.7.1)
 
 A creative-mode toolbox for designing modpacks in game. NeoForge 1.21.1.
 Press LEFT ALT in a creative world to open the hub (change the key in Controls > World Forge).
@@ -24,3 +24,9 @@ The GitHub build tries to include everything (extra forges + JEI plugin + EMI pl
 cannot be built. The line "BUILD RESULT: ..." in the build log says which one you got.
 
 See CHECKLIST.md for the full list of features and known limits.
+
+## Download
+Download the .jar from the Releases page of this repository (not from the Actions tab).
+Each release has a SHA256SUMS.txt so you can check that your file matches. World Forge has no network code,
+does not run other programs, and only reads and writes files inside config/worldforge.
+The source code is in this repository and is MIT licensed.
