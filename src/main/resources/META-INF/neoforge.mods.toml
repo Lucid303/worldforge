@@ -21,6 +21,5 @@ side="BOTH"
 [[dependencies.worldforge]]
 modId="minecraft"
 type="required"
-versionRange="[]"
 ordering="NONE"
 side="BOTH"
