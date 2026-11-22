@@ -1,4 +1,4 @@
-# World Forge 0.7.0 - things to check
+# World Forge 0.8.0 - things to check
 
 ## Fixes from last round
 1. Biome Forge: Apply really changes the colour in the world and it stays after leaving the screen / restarting.
@@ -28,3 +28,24 @@
 - World Gen Forge only edits what has a number (count, rarity, height, vein size); trees and lakes are listed but their
   shapes cannot be edited here.
 - Not done yet: Entity Forge (spawns, health, damage, speed), Trade Forge, Advancement Forge.
+
+
+## Other mods (Create, Applied Energistics 2, Ars Nouveau) - new in 0.8.0
+16. Click an item made by one of these machines: its recipe row shows the machine's icon and name (for example
+    "Create: mixing"). Edit opens a picture editor (not just text).
+17. Create: change an ingredient item / tag / fluid and amount, an output item, count and chance, processing time
+    and the heat requirement (click to cycle none / heated / superheated); Save; JEI/EMI show the change.
+18. Applied Energistics 2: inscriber recipe shows Top / Middle / Bottom slots and a Result; mode switches inscribe / press.
+19. Ars Nouveau: enchanting apparatus recipe shows reagent, pedestal items and output, plus the source cost number.
+20. Add / remove ingredients with the Add button and X on a list; the rest of the recipe stays exactly as it was.
+21. New recipe -> "Other mods": pick a machine type; you get a copy of one of its recipes to change, then Save.
+22. The Text button still opens the raw JSON for anything the picture editor cannot show.
+23. Loot Forge, Tag Forge and History also work with these mods' items and recipes.
+
+## Known limits for other mods
+- Recipes whose only output is a fluid do not appear in the item list (you can still reach them via the machine picker).
+- Lists that are not made of items or fluids (for example Create sequenced assembly steps) are shown as "N entries":
+  use the Text button for those.
+- Text values (like a spell glyph name) are shown but not changed with buttons; "mode" and "heat_requirement" are the
+  only text values with a switch.
+- Recipes a mod builds in code (not from files) can be viewed but not always saved.

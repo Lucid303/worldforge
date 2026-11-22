@@ -97,6 +97,21 @@ public final class ServerHandler {
             send(player, "RECIPE_ERROR", idText, "That recipe does not exist on the server.");
             return;
         }
+        // The recipe file itself is the best source: it is exactly the format the mod (Create, AE2, Ars Nouveau ...) reads.
+        Optional<net.minecraft.server.packs.resources.Resource> file = server.getResourceManager().getResource(
+                ResourceLocation.fromNamespaceAndPath(id.getNamespace(), "recipe/" + id.getPath() + ".json"));
+        if (file.isPresent()) {
+            try (java.io.BufferedReader reader = file.get().openAsReader()) {
+                String text = reader.lines().collect(java.util.stream.Collectors.joining("\n"));
+                JsonElement parsed = JsonParser.parseString(text);
+                if (parsed.isJsonObject()) {
+                    send(player, "RECIPE", idText, GSON.toJson(parsed));
+                    return;
+                }
+            } catch (Exception ignored) {
+                // fall back to turning the loaded recipe back into JSON
+            }
+        }
         RegistryOps<JsonElement> ops = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
         DataResult<JsonElement> result = Recipe.CODEC.encodeStart(ops, holder.get().value());
         if (result.result().isPresent()) {

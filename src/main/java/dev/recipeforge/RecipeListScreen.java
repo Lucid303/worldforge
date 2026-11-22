@@ -160,7 +160,7 @@ public class RecipeListScreen extends ForgeScreen {
             if (GridEditorScreen.supports(type)) {
                 this.minecraft.setScreen(new GridEditorScreen(this, obj, id, null, null));
             } else {
-                this.minecraft.setScreen(new EditorScreen(this, id, json));
+                this.minecraft.setScreen(new ModRecipeScreen(this, id, obj, null));
             }
         } catch (Exception e) {
             status = "Could not open this recipe: " + e.getMessage();

@@ -55,14 +55,21 @@ public abstract class NumberRowsScreen extends ForgeScreen {
         for (int i = 0; i < numberRows.size(); i++) {
             final Row row = numberRows.get(i);
             int y = top + i * ROW_H;
+            int bx = left + 214;
+            this.addRenderableWidget(Button.builder(Component.literal("Min"), b -> row.set().accept(row.min()))
+                    .bounds(bx, y, 30, 18)
+                    .tooltip(Tooltip.create(Component.literal("Set to the lowest possible value."))).build());
             int[] steps = {-5, -1, 1, 5};
             for (int s = 0; s < 4; s++) {
                 final int step = steps[s];
                 this.addRenderableWidget(Button.builder(Component.literal(step > 0 ? "+" + step : String.valueOf(step)),
                         b -> row.set().accept(Math.max(row.min(), Math.min(row.max(), row.get().get() + step))))
-                        .bounds(left + 230 + s * 28, y, 26, 18)
+                        .bounds(bx + 32 + s * 28, y, 26, 18)
                         .tooltip(Tooltip.create(Component.literal(step > 0 ? "Raise by " + step : "Lower by " + (-step)))).build());
             }
+            this.addRenderableWidget(Button.builder(Component.literal("Max"), b -> row.set().accept(row.max()))
+                    .bounds(bx + 144, y, 30, 18)
+                    .tooltip(Tooltip.create(Component.literal("Set to the highest possible value."))).build());
         }
         addExtraWidgets(top + numberRows.size() * ROW_H);
 
@@ -84,8 +91,8 @@ public abstract class NumberRowsScreen extends ForgeScreen {
         for (int i = 0; i < numberRows.size(); i++) {
             Row row = numberRows.get(i);
             int y = top + i * ROW_H;
-            g.drawString(this.font, this.font.plainSubstrByWidth(row.label(), 170), left + 4, y + 5, 0xFFFFFF);
-            g.drawString(this.font, String.valueOf(row.get().get()), left + 190, y + 5, 0xFFFF55);
+            g.drawString(this.font, this.font.plainSubstrByWidth(row.label(), 165), left + 4, y + 5, 0xFFFFFF);
+            g.drawString(this.font, String.valueOf(row.get().get()), left + 176, y + 5, 0xFFFF55);
         }
         drawExtra(g, top + numberRows.size() * ROW_H);
         drawStatus(g, left, this.height - 52, boxWidth);

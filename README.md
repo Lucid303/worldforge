@@ -1,4 +1,4 @@
-# World Forge (version 0.7.1)
+# World Forge (version 0.8.0)
 
 A creative-mode toolbox for designing modpacks in game. NeoForge 1.21.1.
 Press LEFT ALT in a creative world to open the hub (change the key in Controls > World Forge).
@@ -7,6 +7,8 @@ Press LEFT ALT in a creative world to open the hub (change the key in Controls >
 - Recipe Forge: crafting table, furnace, blast furnace, smoker, campfire, stonecutter, smithing table,
   anvil and grindstone (picture editors), plus a text editor for other mods' machines.
   Ingredients can be item TAGS (type @tag in the search box). Crafting recipes can KEEP an item.
+  Other mods' machines (Create, Applied Energistics 2, Ars Nouveau and any other mod) open a picture editor that
+  reads the recipe's own structure: item slots, fluid slots, numbers, switches and lists.
 - Loot Forge: block drops, mob drops, chest loot (every mod's loot tables work).
 - Structure Forge: choose which biomes a structure spawns in (re-enter the world to apply).
 - Biome Forge: change grass, leaf, water, underwater, sky and fog colours with a colour wheel.

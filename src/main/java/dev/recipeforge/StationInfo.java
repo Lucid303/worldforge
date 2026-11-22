@@ -4,6 +4,8 @@ import java.util.Locale;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -34,7 +36,7 @@ public final class StationInfo {
             case "minecraft:stonecutting" -> new Info("Stonecutter", Items.STONECUTTER, 0xFF5B5B6B);
             case "minecraft:smithing", "minecraft:smithing_transform", "minecraft:smithing_trim" ->
                     new Info("Smithing Table", Items.SMITHING_TABLE, 0xFF3A3A66);
-            default -> new Info(pretty(type), Items.BOOK, 0xFF2E5F8A);
+            default -> new Info(pretty(type), modIcon(type), 0xFF2E5F8A);
         };
     }
 
@@ -58,6 +60,55 @@ public final class StationInfo {
         return new Info("Biome Forge", Items.GRASS_BLOCK, 0xFF3F7F3F);
     }
 
+    private static Item lookup(String id) {
+        ResourceLocation rl = ResourceLocation.tryParse(id);
+        return rl == null ? null : BuiltInRegistries.ITEM.getOptional(rl).filter(i -> i != Items.AIR).orElse(null);
+    }
+
+    /** An icon for another mod's machine: a known machine item, an item named like the recipe, or the mod's main item. */
+    private static Item modIcon(String type) {
+        String[][] known = {
+                {"create:mixing", "create:mechanical_mixer"}, {"create:compacting", "create:mechanical_press"},
+                {"create:pressing", "create:mechanical_press"}, {"create:milling", "create:millstone"},
+                {"create:crushing", "create:crushing_wheel"}, {"create:cutting", "create:mechanical_saw"},
+                {"create:washing", "create:encased_fan"}, {"create:haunting", "create:encased_fan"},
+                {"create:splashing", "create:encased_fan"}, {"create:deploying", "create:deployer"},
+                {"create:filling", "create:spout"}, {"create:emptying", "create:item_drain"},
+                {"create:mechanical_crafting", "create:mechanical_crafter"},
+                {"create:sandpaper_polishing", "create:sand_paper"}, {"create:sequenced_assembly", "create:precision_mechanism"},
+                {"ars_nouveau:enchanting_apparatus", "ars_nouveau:enchanting_apparatus"},
+                {"ars_nouveau:imbuement", "ars_nouveau:imbuement_chamber"}, {"ars_nouveau:glyph", "ars_nouveau:scribes_table"},
+                {"ars_nouveau:crush", "ars_nouveau:novice_spell_book"}, {"ae2:inscriber", "ae2:inscriber"},
+                {"ae2:charger", "ae2:charger"}, {"ae2:transform", "ae2:certus_quartz_crystal"}};
+        for (String[] k : known) {
+            if (k[0].equals(type)) {
+                Item item = lookup(k[1]);
+                if (item != null) {
+                    return item;
+                }
+            }
+        }
+        Item same = lookup(type);
+        if (same != null) {
+            return same;
+        }
+        int colon = type.indexOf(':');
+        String ns = colon > 0 ? type.substring(0, colon) : "";
+        String[] fallback = switch (ns) {
+            case "create" -> new String[] {"create:cogwheel", "create:andesite_alloy"};
+            case "ars_nouveau" -> new String[] {"ars_nouveau:source_gem", "ars_nouveau:novice_spell_book"};
+            case "ae2" -> new String[] {"ae2:controller", "ae2:certus_quartz_crystal"};
+            default -> new String[0];
+        };
+        for (String f : fallback) {
+            Item item = lookup(f);
+            if (item != null) {
+                return item;
+            }
+        }
+        return Items.BOOK;
+    }
+
     private static String pretty(String type) {
         int colon = type.indexOf(':');
         if (colon <= 0) {
@@ -65,7 +116,13 @@ public final class StationInfo {
         }
         String ns = type.substring(0, colon);
         String path = type.substring(colon + 1).replace('_', ' ');
-        return Character.toUpperCase(ns.charAt(0)) + ns.substring(1) + ": " + path;
+        String name = switch (ns) {
+            case "create" -> "Create";
+            case "ars_nouveau" -> "Ars Nouveau";
+            case "ae2" -> "Applied Energistics 2";
+            default -> Character.toUpperCase(ns.charAt(0)) + ns.substring(1);
+        };
+        return name + ": " + path;
     }
 
     /** Draws the coloured station banner across the top of the screen. */

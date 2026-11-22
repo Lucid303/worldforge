@@ -90,13 +90,31 @@ public final class HistoryVisuals {
                     ings.add(ingredient(o.get("addition")));
                 }
                 default -> {
-                    if (o.has("ingredient")) {
-                        ings.add(ingredient(o.get("ingredient")));
+                    for (Map.Entry<String, JsonElement> entry : o.entrySet()) {
+                        String k = entry.getKey().toLowerCase();
+                        if (!k.equals("type") && !k.contains("result") && !k.contains("output")) {
+                            collectStacks(entry.getValue(), ings);
+                        }
                     }
                 }
             }
             JsonElement res = o.get("result");
+            if (res == null) {
+                for (Map.Entry<String, JsonElement> entry : o.entrySet()) {
+                    String k = entry.getKey().toLowerCase();
+                    if (k.contains("result") || k.contains("output")) {
+                        res = entry.getValue().isJsonArray() && entry.getValue().getAsJsonArray().size() > 0
+                                ? entry.getValue().getAsJsonArray().get(0) : entry.getValue();
+                        break;
+                    }
+                }
+            }
             if (res != null && res.isJsonObject()) {
+                JsonObject inner = res.getAsJsonObject();
+                if (inner.has("item") && inner.get("item").isJsonPrimitive() && !inner.has("id")) {
+                    result = stackOf(inner.get("item").getAsString(), inner.has("count") ? inner.get("count").getAsInt() : 1);
+                    return new Recipe(type, ings, Math.max(1, cols), result);
+                }
                 JsonObject ro = res.getAsJsonObject();
                 result = stackOf(ro.get("id").getAsString(), ro.has("count") ? ro.get("count").getAsInt() : 1);
             } else if (res != null && res.isJsonPrimitive()) {
@@ -106,6 +124,27 @@ public final class HistoryVisuals {
             // leave what we have
         }
         return new Recipe(type, ings, Math.max(1, cols), result);
+    }
+
+    /** Finds item / tag objects anywhere inside a recipe (used for other mods' recipes). */
+    private static void collectStacks(JsonElement el, List<Ingredient> out) {
+        if (out.size() >= 9 || el == null) {
+            return;
+        }
+        if (el.isJsonArray()) {
+            for (JsonElement e : el.getAsJsonArray()) {
+                collectStacks(e, out);
+            }
+        } else if (el.isJsonObject()) {
+            JsonObject o = el.getAsJsonObject();
+            if ((o.has("item") && o.get("item").isJsonPrimitive()) || (o.has("tag") && o.get("tag").isJsonPrimitive())) {
+                out.add(ingredient(o));
+            } else {
+                for (Map.Entry<String, JsonElement> e : o.entrySet()) {
+                    collectStacks(e.getValue(), out);
+                }
+            }
+        }
     }
 
     private static List<ItemStack> parseLoot(String json) {

@@ -8,6 +8,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import dev.recipeforge.IdPickerScreen;
 import dev.recipeforge.RecipeEditPayload;
 import dev.recipeforge.StationInfo;
 import net.minecraft.client.gui.GuiGraphics;

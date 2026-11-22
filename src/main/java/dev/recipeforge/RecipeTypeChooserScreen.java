@@ -28,7 +28,9 @@ public class RecipeTypeChooserScreen extends ForgeScreen {
             new Option("Anvil (block)", "recipeforge:anvil_block", Items.ANVIL, "Stop two items from being combined."),
             new Option("Grindstone", "recipeforge:grindstone", Items.GRINDSTONE, "Two items combine into a new item."),
             new Option("Grindstone (block)", "recipeforge:grindstone_block", Items.GRINDSTONE,
-                    "Stop two items from being ground together."));
+                    "Stop two items from being ground together."),
+            new Option("Other mods", "other", Items.KNOWLEDGE_BOOK,
+                    "Create, Ars Nouveau, Applied Energistics 2 and other mods' machines."));
 
     private final String presetResult;
     private int colLeft;
@@ -52,7 +54,9 @@ public class RecipeTypeChooserScreen extends ForgeScreen {
             int x = i < perCol ? colLeft : colRight;
             int y = top + (i % perCol) * stepY;
             this.addRenderableWidget(Button.builder(Component.literal(option.label()), b ->
-                    this.minecraft.setScreen(new GridEditorScreen(parent, null, null, presetResult, option.type())))
+                    this.minecraft.setScreen(option.type().equals("other")
+                            ? new ModTypePickerScreen(parent, presetResult)
+                            : new GridEditorScreen(parent, null, null, presetResult, option.type())))
                     .bounds(x, y, bw, 20).tooltip(Tooltip.create(Component.literal(option.hint()))).build());
         }
         this.addRenderableWidget(Button.builder(Component.literal("Back"), b -> this.onClose())

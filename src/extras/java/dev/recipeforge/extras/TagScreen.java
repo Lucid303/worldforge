@@ -10,6 +10,7 @@ import com.google.gson.JsonObject;
 
 import dev.recipeforge.ClientState;
 import dev.recipeforge.ForgeScreen;
+import dev.recipeforge.IdPickerScreen;
 import dev.recipeforge.ItemPickerScreen;
 import dev.recipeforge.RecipeEditPayload;
 import dev.recipeforge.StationInfo;
