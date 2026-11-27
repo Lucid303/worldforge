@@ -24,45 +24,51 @@ import net.neoforged.fml.loading.FMLPaths;
 public final class ExportServer {
     private ExportServer() {}
 
-    public static void export(ServerPlayer player, MinecraftServer server) {
+    /** Zips config/worldforge into <game folder>/worldforge-exports. Returns the zip, or null when there is nothing to zip. */
+    public static Path createZip(String prefix) throws IOException {
         Path config = FMLPaths.CONFIGDIR.get().resolve("worldforge");
         if (!Files.exists(config)) {
-            ServerHandler.fail(player, "There is nothing to export yet: you have not changed anything.");
-            return;
+            return null;
         }
-        try {
-            Path outDir = FMLPaths.GAMEDIR.get().resolve("worldforge-exports");
-            Files.createDirectories(outDir);
-            String stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
-            Path zip = outDir.resolve("worldforge-export-" + stamp + ".zip");
+        Path outDir = FMLPaths.GAMEDIR.get().resolve("worldforge-exports");
+        Files.createDirectories(outDir);
+        String stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
+        Path zip = outDir.resolve(prefix + stamp + ".zip");
 
-            List<Path> files = new ArrayList<>();
-            try (Stream<Path> walk = Files.walk(config)) {
-                walk.filter(Files::isRegularFile).forEach(files::add);
-            }
-            int count = 0;
-            try (OutputStream raw = Files.newOutputStream(zip); ZipOutputStream out = new ZipOutputStream(raw)) {
-                for (Path f : files) {
-                    String name = f.getFileName().toString();
-                    if (name.equals("history.json")) {
-                        continue;   // the history is personal; it is not needed in a shared pack
-                    }
-                    String rel = "config/worldforge/" + config.relativize(f).toString().replace('\\', '/');
-                    out.putNextEntry(new ZipEntry(rel));
-                    Files.copy(f, out);
-                    out.closeEntry();
-                    count++;
+        List<Path> files = new ArrayList<>();
+        try (Stream<Path> walk = Files.walk(config)) {
+            walk.filter(Files::isRegularFile).forEach(files::add);
+        }
+        try (OutputStream raw = Files.newOutputStream(zip); ZipOutputStream out = new ZipOutputStream(raw)) {
+            for (Path f : files) {
+                if (f.getFileName().toString().equals("history.json")) {
+                    continue;   // the history is personal; it is not needed in a shared pack
                 }
-                String readme = "World Forge export\n\n"
-                        + "Copy the 'config' folder from this zip into your Minecraft instance folder\n"
-                        + "(or into your modpack's 'overrides' folder) and install the World Forge mod.\n"
-                        + "Everything you changed will be applied automatically.\n";
-                out.putNextEntry(new ZipEntry("README.txt"));
-                out.write(readme.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                String rel = "config/worldforge/" + config.relativize(f).toString().replace('\\', '/');
+                out.putNextEntry(new ZipEntry(rel));
+                Files.copy(f, out);
                 out.closeEntry();
             }
+            String readme = "World Forge export\n\n"
+                    + "Copy the 'config' folder from this zip into your Minecraft instance folder\n"
+                    + "(or into your modpack's 'overrides' folder) and install the World Forge mod.\n"
+                    + "Everything you changed will be applied automatically.\n";
+            out.putNextEntry(new ZipEntry("README.txt"));
+            out.write(readme.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            out.closeEntry();
+        }
+        return zip;
+    }
+
+    public static void export(ServerPlayer player, MinecraftServer server) {
+        try {
+            Path zip = createZip("worldforge-export-");
+            if (zip == null) {
+                ServerHandler.fail(player, "There is nothing to export yet: you have not changed anything.");
+                return;
+            }
             ServerHandler.send(player, "EXPORT_DONE", "", zip.toAbsolutePath().toString());
-            ServerHandler.ok(player, "Exported " + count + " files to " + zip.toAbsolutePath());
+            ServerHandler.ok(player, "Exported to " + zip.toAbsolutePath());
         } catch (IOException e) {
             WorldForge.LOGGER.error("World Forge export failed", e);
             ServerHandler.fail(player, "Export failed: " + e.getMessage());

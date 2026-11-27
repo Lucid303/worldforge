@@ -75,6 +75,14 @@ public final class ServerHandler {
                         ExportServer.export(player, server);
                         return;
                     }
+                    if (a.equals("RESET_ALL")) {
+                        ResetServer.resetAll(player, server);
+                        return;
+                    }
+                    if (a.equals("FLUID_TEMPLATE")) {
+                        ModRecipeServer.fluidTemplate(player, server, payload.recipeId());
+                        return;
+                    }
                     if (Extensions.dispatchServer(a, player, server, payload.recipeId(), payload.json())) {
                         return;
                     }

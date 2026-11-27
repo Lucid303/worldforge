@@ -64,7 +64,7 @@ public final class HistoryVisuals {
             JsonObject o = JsonParser.parseString(json).getAsJsonObject();
             type = o.has("type") ? o.get("type").getAsString() : "?";
             switch (type) {
-                case "minecraft:crafting_shaped", "worldforge:keep_shaped" -> {
+                case "minecraft:crafting_shaped", "worldforge:keep_shaped", "create:mechanical_crafting" -> {
                     JsonArray pattern = o.getAsJsonArray("pattern");
                     JsonObject key = o.getAsJsonObject("key");
                     for (JsonElement row : pattern) {
@@ -199,7 +199,7 @@ public final class HistoryVisuals {
         }
         Recipe r = RECIPES.computeIfAbsent(text, HistoryVisuals::parseRecipe);
         int cols = r.cols();
-        int count = Math.min(r.ings().size(), 9);
+        int count = Math.min(r.ings().size(), 36);
         for (int i = 0; i < count; i++) {
             int cx = x + (i % cols) * 18;
             int cy = y + (i / cols) * 18;

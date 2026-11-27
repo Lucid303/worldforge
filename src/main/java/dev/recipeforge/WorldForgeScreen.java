@@ -56,6 +56,10 @@ public class WorldForgeScreen extends ForgeScreen {
                     .bounds(x, y, tileW, tileH)
                     .tooltip(Tooltip.create(Component.literal(tile.hint()))).build());
         }
+        this.addRenderableWidget(Button.builder(Component.literal("Reset all"),
+                b -> this.minecraft.setScreen(new ConfirmResetScreen(this)))
+                .bounds(this.width - 192, 28, 90, 18).tooltip(Tooltip.create(Component.literal(
+                        "Undo every change and put everything back to normal. A backup is saved first."))).build());
         this.addRenderableWidget(Button.builder(Component.literal("Pack Export"), b -> {
             PacketDistributor.sendToServer(new RecipeEditPayload("EXPORT_PACK", "", ""));
             status = "Exporting...";

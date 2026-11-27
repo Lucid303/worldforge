@@ -77,6 +77,13 @@ public final class StationData {
         return station.equals("anvil") ? store.anvil : store.grindstone;
     }
 
+    public static synchronized void clearAll() {
+        load();
+        store.anvil.clear();
+        store.grindstone.clear();
+        save();
+    }
+
     public static synchronized String toSyncJson() {
         load();
         JsonObject o = new JsonObject();

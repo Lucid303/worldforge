@@ -107,16 +107,16 @@ public class EnchantmentScreen extends NumberRowsScreen {
                     json.addProperty("primary_items", "#" + tag);
                 }
             }));
-        }).bounds(left + 230, y, 70, 18)
+        }).bounds(left + 330, y, 70, 18)
                 .tooltip(Tooltip.create(Component.literal("Choose a tag of items this enchantment can go on."))).build());
     }
 
     @Override
     protected void drawExtra(GuiGraphics g, int y) {
         if (json != null && json.has("supported_items")) {
-            g.drawString(this.font, "Items it applies to:", left + 4, y + 5, 0xFFFFFF);
-            g.drawString(this.font, this.font.plainSubstrByWidth(json.get("supported_items").toString().replace("\"", ""), 150),
-                    left + 100, y + 5, 0xAAAAAA);
+            g.drawString(this.font, "Applies to:", left + 4, y + 5, 0xFFFFFF);
+            g.drawString(this.font, this.font.plainSubstrByWidth(json.get("supported_items").toString().replace("\"", ""), 245),
+                    left + 76, y + 5, 0xAAAAAA);
         }
     }
 

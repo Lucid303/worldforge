@@ -1,4 +1,4 @@
-# World Forge 0.8.0 - things to check
+# World Forge 0.9.0 - things to check
 
 ## Fixes from last round
 1. Biome Forge: Apply really changes the colour in the world and it stays after leaving the screen / restarting.
@@ -49,3 +49,20 @@
 - Text values (like a spell glyph name) are shown but not changed with buttons; "mode" and "heat_requirement" are the
   only text values with a switch.
 - Recipes a mod builds in code (not from files) can be viewed but not always saved.
+
+
+## New in 0.9.0
+24. Hub: "Reset all" button next to Pack Export. It asks for confirmation, saves a backup zip in
+    <game folder>/worldforge-exports (named worldforge-backup-before-reset-...), then puts recipes, loot, tags, colours,
+    anvil/grindstone combinations, structures, enchantments and world generation back to normal. History is kept.
+25. Enchantment Forge: the "Applies to:" text no longer overlaps the Change button.
+26. Create mechanical crafter: its recipes open a crafting grid like the crafting table (click a square, click an item).
+    Size button 3x3 / 4x4 / 5x5 / 6x6 keeps your items; "Mirror on/off" sets whether the flipped shape also works.
+27. New recipe -> Other mods -> create:mechanical_crafting opens the same grid, empty.
+28. Create mixer (and other machines with fluids): an "Add fluid" button on ingredient / result lists. It copies how that
+    machine writes a fluid; pick the fluid with the Fluid button and set mB with - / + (50 mB, hold Shift for 500).
+
+## Known limits (0.9.0)
+- Mechanical crafter grids bigger than 6x6 can be viewed but not saved from the grid (use the Text button).
+- If a machine has no recipe with a fluid in it, "Add fluid" uses the standard format and Save may refuse it.
+- The recipe list shows a mechanical crafting recipe in a 3-wide preview even when the real shape is wider.

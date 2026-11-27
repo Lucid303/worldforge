@@ -44,7 +44,7 @@ public class ModRecipeScreen extends ForgeScreen {
 
     private sealed interface Row permits Header, SlotRow, NumRow, ToggleRow, CycleRow, TextRow {}
 
-    private record Header(String label, Runnable add) implements Row {}
+    private record Header(String label, Runnable add, Runnable addFluid) implements Row {}
 
     private record SlotRow(String label, JsonObject obj, Runnable remove) implements Row {}
 
@@ -65,6 +65,7 @@ public class ModRecipeScreen extends ForgeScreen {
     private int left;
     private int boxWidth;
     private final int top = 44;
+    private JsonArray pendingFluidList = null;
 
     public ModRecipeScreen(Screen parent, String recipeId, JsonObject json, String presetResult) {
         super(Component.literal("World Forge"), parent);
@@ -183,7 +184,7 @@ public class ModRecipeScreen extends ForgeScreen {
                 arr.add(fresh);
             }
             changed();
-        }));
+        }, () -> requestFluid(arr)));
         int n = 1;
         for (JsonElement el : new ArrayList<>(arr.asList())) {
             final JsonElement element = el;
@@ -192,6 +193,42 @@ public class ModRecipeScreen extends ForgeScreen {
                 changed();
             }));
         }
+    }
+
+    private void requestFluid(JsonArray list) {
+        pendingFluidList = list;
+        PacketDistributor.sendToServer(new RecipeEditPayload("FLUID_TEMPLATE", typeId, ""));
+        status = "Looking at this machine's other recipes to see how it writes a fluid...";
+    }
+
+    @Override
+    public void onData(String kind, String id, String data) {
+        if (!kind.equals("FLUID_TEMPLATE") || !id.equals(typeId) || pendingFluidList == null) {
+            return;
+        }
+        JsonObject entry;
+        try {
+            entry = data.isEmpty() ? null : com.google.gson.JsonParser.parseString(data).getAsJsonObject();
+        } catch (Exception e) {
+            entry = null;
+        }
+        if (entry == null) {
+            entry = new JsonObject();
+            entry.addProperty("fluid", "minecraft:water");
+            entry.addProperty("amount", 1000);
+            status = "No example found, so the standard fluid format was used. If Save complains, use the Text button.";
+        } else {
+            if (entry.has("fluid")) {
+                entry.addProperty("fluid", "minecraft:water");
+            }
+            if (entry.has("amount")) {
+                entry.addProperty("amount", 1000);
+            }
+            status = "";
+        }
+        pendingFluidList.add(entry);
+        pendingFluidList = null;
+        changed();
     }
 
     private void changed() {
@@ -328,7 +365,12 @@ public class ModRecipeScreen extends ForgeScreen {
                 case Header h -> {
                     if (h.add() != null) {
                         this.addRenderableWidget(Button.builder(Component.literal("Add"), b -> h.add().run())
-                                .bounds(left + 200, y + 2, 50, 16).tooltip(tip("Add another one to this list.")).build());
+                                .bounds(left + 200, y + 2, 50, 16).tooltip(tip("Add another item to this list.")).build());
+                    }
+                    if (h.addFluid() != null) {
+                        this.addRenderableWidget(Button.builder(Component.literal("Add fluid"), b -> h.addFluid().run())
+                                .bounds(left + 254, y + 2, 64, 16)
+                                .tooltip(tip("Add a fluid, like water or lava. Then pick the fluid and set how many mB.")).build());
                     }
                 }
                 case SlotRow s -> addSlotButtons(s, y);
@@ -383,10 +425,14 @@ public class ModRecipeScreen extends ForgeScreen {
         final String countKey = o.has("count") ? "count" : (o.has("amount") ? "amount" : null);
         if (countKey != null) {
             final int step = countKey.equals("amount") ? 50 : 1;
-            this.addRenderableWidget(Button.builder(Component.literal("-"), b -> changeNumber(o, countKey, -step))
-                    .bounds(left + 246, y + 2, 14, 16).tooltip(tip(countKey.equals("amount") ? "Less fluid." : "Fewer.")).build());
-            this.addRenderableWidget(Button.builder(Component.literal("+"), b -> changeNumber(o, countKey, step))
-                    .bounds(left + 262, y + 2, 14, 16).tooltip(tip(countKey.equals("amount") ? "More fluid." : "More.")).build());
+            this.addRenderableWidget(Button.builder(Component.literal("-"),
+                    b -> changeNumber(o, countKey, -step * (Screen.hasShiftDown() ? 10 : 1)))
+                    .bounds(left + 246, y + 2, 14, 16)
+                    .tooltip(tip(countKey.equals("amount") ? "Less fluid (50 mB). Hold Shift for 500." : "Fewer. Hold Shift for 10.")).build());
+            this.addRenderableWidget(Button.builder(Component.literal("+"),
+                    b -> changeNumber(o, countKey, step * (Screen.hasShiftDown() ? 10 : 1)))
+                    .bounds(left + 262, y + 2, 14, 16)
+                    .tooltip(tip(countKey.equals("amount") ? "More fluid (50 mB). Hold Shift for 500." : "More. Hold Shift for 10.")).build());
         }
         if (o.has("chance")) {
             this.addRenderableWidget(Button.builder(Component.literal("-"), b -> changeChance(o, -0.05))

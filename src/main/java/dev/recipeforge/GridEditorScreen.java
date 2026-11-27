@@ -41,14 +41,14 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * Type @tag in the search box to pick an item TAG (like minecraft:planks) instead of one item.
  */
 public class GridEditorScreen extends ForgeScreen {
-    private enum Layout { CRAFTING, COOKING, STONECUTTING, SMITHING, ANVIL, GRINDSTONE }
+    private enum Layout { CRAFTING, COOKING, STONECUTTING, SMITHING, ANVIL, GRINDSTONE, MECHANICAL }
 
     private record Pick(ItemStack stack, String id, boolean tag) {}
 
     private static final int STEP = 22;   // distance between squares
     private static final int BOX = 20;    // size of a square
     private static final int CELL = 18;   // size of a picker cell
-    private static final int RESULT = 9;  // "selected" value meaning the result square
+    private static final int RESULT = 100; // "selected" value meaning the result square
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String[] SMITHING_LABELS = {"Template", "Base item", "Addition"};
     private static List<ItemStack> allItems = null;
@@ -58,13 +58,16 @@ public class GridEditorScreen extends ForgeScreen {
     private final String recipeId;         // null when making something new
     private final String typeId;
     private final Layout layout;
-    private final JsonElement[] slotJson = new JsonElement[9];
-    private final Ingredient[] slotIng = new Ingredient[9];
-    private final boolean[] keep = new boolean[9];
+    private final JsonElement[] slotJson = new JsonElement[36];
+    private final Ingredient[] slotIng = new Ingredient[36];
+    private final boolean[] keep = new boolean[36];
     private String resultItem = null;
     private ItemStack resultStack = ItemStack.EMPTY;
     private int resultCount = 1;
     private boolean shaped = true;
+    private int gridSize = 3;            // Create mechanical crafter: 3x3 up to 6x6
+    private boolean mirror = true;       // Create mechanical crafter: also accept the mirrored shape
+    private String mirrorKey = null;     // the name the recipe uses for that setting
     private boolean blockMode = false;
     private int cookTime;
     private float experience = 0.1f;
@@ -108,6 +111,7 @@ public class GridEditorScreen extends ForgeScreen {
             case "minecraft:smelting", "minecraft:blasting", "minecraft:smoking", "minecraft:campfire_cooking" ->
                     Layout.COOKING;
             case "minecraft:stonecutting" -> Layout.STONECUTTING;
+            case "create:mechanical_crafting" -> Layout.MECHANICAL;
             case "minecraft:smithing_transform" -> Layout.SMITHING;
             default -> null;
         };
@@ -139,9 +143,49 @@ public class GridEditorScreen extends ForgeScreen {
         this.cookTime = defaultCookTime(type);
         if (original != null) {
             loadFromJson(original);
+            if (recipeId == null) {
+                // a copy of an existing recipe used only to learn the format: start with an empty grid
+                clearForTemplate();
+                if (presetResult != null) {
+                    setResult(presetResult);
+                }
+            }
         } else if (presetResult != null) {
             setResult(presetResult);
         }
+    }
+
+    private void clearForTemplate() {
+        for (int i = 0; i < slotJson.length; i++) {
+            slotJson[i] = null;
+            slotIng[i] = null;
+            keep[i] = false;
+        }
+        resultItem = null;
+        resultStack = ItemStack.EMPTY;
+        resultCount = 1;
+    }
+
+    /** Changes the size of the Create mechanical crafter grid and keeps every item where it was. */
+    private void resizeGrid(int newSize) {
+        JsonElement[] oldJson = slotJson.clone();
+        Ingredient[] oldIng = slotIng.clone();
+        int old = gridSize;
+        for (int i = 0; i < slotJson.length; i++) {
+            slotJson[i] = null;
+            slotIng[i] = null;
+        }
+        for (int i = 0; i < old * old; i++) {
+            int r = i / old;
+            int c = i % old;
+            if (r < newSize && c < newSize) {
+                slotJson[r * newSize + c] = oldJson[i];
+                slotIng[r * newSize + c] = oldIng[i];
+            }
+        }
+        gridSize = newSize;
+        selected = 0;
+        this.rebuildWidgets();
     }
 
     // ------------------------------------------------------------ layout helpers
@@ -153,6 +197,7 @@ public class GridEditorScreen extends ForgeScreen {
     private int slotCount() {
         return switch (layout) {
             case CRAFTING -> 9;
+            case MECHANICAL -> gridSize * gridSize;
             case COOKING, STONECUTTING -> 1;
             case SMITHING -> 3;
             case ANVIL, GRINDSTONE -> 2;
@@ -162,6 +207,7 @@ public class GridEditorScreen extends ForgeScreen {
     private int sx(int i) {
         return switch (layout) {
             case CRAFTING -> gridX + (i % 3) * STEP;
+            case MECHANICAL -> gridX + (i % gridSize) * STEP;
             case COOKING, STONECUTTING -> gridX + STEP;
             case SMITHING, ANVIL, GRINDSTONE -> gridX;
         };
@@ -170,6 +216,7 @@ public class GridEditorScreen extends ForgeScreen {
     private int sy(int i) {
         return switch (layout) {
             case CRAFTING -> gridY + (i / 3) * STEP;
+            case MECHANICAL -> gridY + (i / gridSize) * STEP;
             case COOKING, STONECUTTING -> gridY + STEP;
             case SMITHING, ANVIL, GRINDSTONE -> gridY + i * STEP;
         };
@@ -189,7 +236,7 @@ public class GridEditorScreen extends ForgeScreen {
     }
 
     private boolean showCount() {
-        return layout == Layout.CRAFTING || layout == Layout.STONECUTTING || (isPair() && !blockMode);
+        return layout == Layout.CRAFTING || layout == Layout.MECHANICAL || layout == Layout.STONECUTTING || (isPair() && !blockMode);
     }
 
     private boolean anyKeep() {
@@ -202,6 +249,9 @@ public class GridEditorScreen extends ForgeScreen {
     }
 
     private String currentType() {
+        if (layout == Layout.MECHANICAL) {
+            return "create:mechanical_crafting";
+        }
         if (layout == Layout.CRAFTING) {
             if (anyKeep()) {
                 return shaped ? "worldforge:keep_shaped" : "worldforge:keep_shapeless";
@@ -233,20 +283,37 @@ public class GridEditorScreen extends ForgeScreen {
     private void loadFromJson(JsonObject json) {
         try {
             switch (layout) {
-                case CRAFTING -> {
+                case CRAFTING, MECHANICAL -> {
+                    if (layout == Layout.MECHANICAL) {
+                        mirrorKey = json.has("acceptMirrored") ? "acceptMirrored"
+                                : (json.has("accept_mirrored") ? "accept_mirrored" : null);
+                        mirror = mirrorKey == null || json.get(mirrorKey).getAsBoolean();
+                    }
                     if (shaped) {
                         JsonArray pattern = json.getAsJsonArray("pattern");
                         JsonObject key = json.getAsJsonObject("key");
-                        for (int r = 0; r < pattern.size() && r < 3; r++) {
+                        int cols = 3;
+                        if (layout == Layout.MECHANICAL) {
+                            int biggest = pattern.size();
+                            for (JsonElement pr : pattern) {
+                                biggest = Math.max(biggest, pr.getAsString().length());
+                            }
+                            gridSize = Math.max(3, Math.min(6, biggest));
+                            cols = gridSize;
+                            if (biggest > 6) {
+                                status = "This recipe is bigger than 6x6: only the top left part is shown. Do not save it here.";
+                            }
+                        }
+                        for (int r = 0; r < pattern.size() && r < cols; r++) {
                             String row = pattern.get(r).getAsString();
-                            for (int c = 0; c < row.length() && c < 3; c++) {
+                            for (int c = 0; c < row.length() && c < cols; c++) {
                                 char ch = row.charAt(c);
                                 if (ch == ' ') {
                                     continue;
                                 }
                                 JsonElement ing = key.get(String.valueOf(ch));
                                 if (ing != null) {
-                                    setSlot(r * 3 + c, ing.deepCopy());
+                                    setSlot(r * cols + c, ing.deepCopy());
                                 }
                             }
                         }
@@ -402,13 +469,15 @@ public class GridEditorScreen extends ForgeScreen {
     protected void init() {
         String prev = searchBox != null ? searchBox.getValue() : lastSearch;
 
-        pickCols = Math.max(5, Math.min(12, (this.width - 20 - 150) / CELL));
-        int total = 138 + pickCols * CELL;
+        int gridW = (layout == Layout.MECHANICAL ? gridSize : 3) * STEP;
+        int leftW = layout == Layout.MECHANICAL ? Math.max(138, gridW + 84) : 138;
+        pickCols = Math.max(5, Math.min(12, (this.width - 20 - leftW - 12) / CELL));
+        int total = leftW + pickCols * CELL;
         gridX = Math.max(8, (this.width - total) / 2);
         gridY = 66;
-        resX = gridX + 3 * STEP + 28;
-        resY = gridY + STEP;
-        pickX = gridX + 138;
+        resX = gridX + gridW + 28;
+        resY = layout == Layout.MECHANICAL ? gridY + (gridSize * STEP - BOX) / 2 : gridY + STEP;
+        pickX = gridX + leftW;
         pickY = 50;
         pickRows = Math.max(2, (this.height - pickY - 66) / CELL);
 
@@ -436,6 +505,17 @@ public class GridEditorScreen extends ForgeScreen {
                     .tooltip(Tooltip.create(Component.literal(
                             "Select a square, then press Keep: that item is NOT used up when crafting "
                                     + "(for example an axe). A green K marks it."))).build());
+        }
+        if (layout == Layout.MECHANICAL) {
+            this.addRenderableWidget(Button.builder(Component.literal("Size " + gridSize + "x" + gridSize),
+                    b -> resizeGrid(gridSize >= 6 ? 3 : gridSize + 1))
+                    .bounds(resX - 10, resY + 44, 60, 18)
+                    .tooltip(Tooltip.create(Component.literal("Change how big the crafting grid is (3x3 up to 6x6)."))).build());
+            this.addRenderableWidget(Button.builder(Component.literal(mirror ? "Mirror on" : "Mirror off"), b -> {
+                mirror = !mirror;
+                b.setMessage(Component.literal(mirror ? "Mirror on" : "Mirror off"));
+            }).bounds(resX - 10, resY + 64, 60, 18)
+                    .tooltip(Tooltip.create(Component.literal("On: the recipe also works with the shape flipped left to right."))).build());
         }
         if (layout == Layout.COOKING) {
             this.addRenderableWidget(Button.builder(Component.literal("-"), b -> changeCook(-20))
@@ -561,7 +641,9 @@ public class GridEditorScreen extends ForgeScreen {
     }
 
     private void buildCrafting(JsonObject out) {
-        if (!out.has("category")) {
+        int cols = layout == Layout.MECHANICAL ? gridSize : 3;
+        int cells = layout == Layout.MECHANICAL ? gridSize * gridSize : 9;
+        if (!out.has("category") && layout == Layout.CRAFTING) {
             out.addProperty("category", "misc");
         }
         out.remove("pattern");
@@ -569,16 +651,16 @@ public class GridEditorScreen extends ForgeScreen {
         out.remove("ingredients");
         out.remove("keep");
         if (shaped) {
-            int minR = 3;
+            int minR = cols;
             int maxR = -1;
-            int minC = 3;
+            int minC = cols;
             int maxC = -1;
-            for (int i = 0; i < 9; i++) {
+            for (int i = 0; i < cells; i++) {
                 if (slotJson[i] != null) {
-                    minR = Math.min(minR, i / 3);
-                    maxR = Math.max(maxR, i / 3);
-                    minC = Math.min(minC, i % 3);
-                    maxC = Math.max(maxC, i % 3);
+                    minR = Math.min(minR, i / cols);
+                    maxR = Math.max(maxR, i / cols);
+                    minC = Math.min(minC, i % cols);
+                    maxC = Math.max(maxC, i % cols);
                 }
             }
             Map<String, Character> letters = new LinkedHashMap<>();
@@ -588,7 +670,7 @@ public class GridEditorScreen extends ForgeScreen {
             for (int r = minR; r <= maxR; r++) {
                 StringBuilder row = new StringBuilder();
                 for (int c = minC; c <= maxC; c++) {
-                    JsonElement ing = slotJson[r * 3 + c];
+                    JsonElement ing = slotJson[r * cols + c];
                     if (ing == null) {
                         row.append(' ');
                     } else {
@@ -608,14 +690,17 @@ public class GridEditorScreen extends ForgeScreen {
             out.add("key", key);
         } else {
             JsonArray list = new JsonArray();
-            for (int i = 0; i < 9; i++) {
+            for (int i = 0; i < cells; i++) {
                 if (slotJson[i] != null) {
                     list.add(slotJson[i].deepCopy());
                 }
             }
             out.add("ingredients", list);
         }
-        if (anyKeep()) {
+        if (layout == Layout.MECHANICAL) {
+            out.addProperty(mirrorKey != null ? mirrorKey : "acceptMirrored", mirror);
+        }
+        if (anyKeep() && layout == Layout.CRAFTING) {
             JsonArray keepList = new JsonArray();
             Set<String> seen = new HashSet<>();
             for (int i = 0; i < 9; i++) {
@@ -647,7 +732,7 @@ public class GridEditorScreen extends ForgeScreen {
         JsonObject out = original != null ? original.deepCopy() : new JsonObject();
         out.addProperty("type", currentType());
         switch (layout) {
-            case CRAFTING -> buildCrafting(out);
+            case CRAFTING, MECHANICAL -> buildCrafting(out);
             case COOKING -> {
                 out.add("ingredient", slotJson[0].deepCopy());
                 out.addProperty("cookingtime", cookTime);
@@ -724,11 +809,11 @@ public class GridEditorScreen extends ForgeScreen {
                 filled++;
             }
         }
-        if (layout == Layout.CRAFTING && filled == 0) {
+        if ((layout == Layout.CRAFTING || layout == Layout.MECHANICAL) && filled == 0) {
             status = "Put at least one item in the grid first.";
             return;
         }
-        if (layout != Layout.CRAFTING && filled < slotCount()) {
+        if (layout != Layout.CRAFTING && layout != Layout.MECHANICAL && filled < slotCount()) {
             status = "Fill every square on the left first.";
             return;
         }
@@ -853,7 +938,7 @@ public class GridEditorScreen extends ForgeScreen {
         }
 
         if (resultVisible()) {
-            g.drawString(this.font, "->", gridX + 3 * STEP + 6, resY + 6, 0xFFFFFF);
+            g.drawString(this.font, "->", resX - 22, resY + 6, 0xFFFFFF);
             g.drawString(this.font, "Makes", resX - 2, resY - 11, 0xFFFFFF);
             Ui.slot(g, resX, resY, BOX);
             if (!resultStack.isEmpty()) {

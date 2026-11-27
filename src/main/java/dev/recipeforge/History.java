@@ -83,6 +83,9 @@ public final class History {
         if (action.startsWith("STRUCT")) {
             return "structure";
         }
+        if (action.startsWith("RESET")) {
+            return "all";
+        }
         if (action.startsWith("STATION")) {
             return "station";
         }

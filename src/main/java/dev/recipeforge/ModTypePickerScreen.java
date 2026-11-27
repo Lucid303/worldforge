@@ -109,7 +109,12 @@ public class ModTypePickerScreen extends ForgeScreen {
         awaitingId = null;
         try {
             JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
-            this.minecraft.setScreen(new ModRecipeScreen(parent, null, obj, presetResult));
+            String type = obj.has("type") ? obj.get("type").getAsString() : "";
+            if (GridEditorScreen.supports(type)) {
+                this.minecraft.setScreen(new GridEditorScreen(parent, obj, null, presetResult, null));
+            } else {
+                this.minecraft.setScreen(new ModRecipeScreen(parent, null, obj, presetResult));
+            }
         } catch (Exception e) {
             status = "Could not open that: " + e.getMessage();
         }

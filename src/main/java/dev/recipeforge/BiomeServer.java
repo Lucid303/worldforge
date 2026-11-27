@@ -101,6 +101,14 @@ public final class BiomeServer {
         return true;
     }
 
+    public static void clearAll() {
+        synchronized (BiomeServer.class) {
+            get().clear();
+        }
+        save();
+        broadcast();
+    }
+
     private static void broadcast() {
         PacketDistributor.sendToAllPlayers(new ServerMessagePayload("BIOME_SYNC", "", toJson()));
     }
